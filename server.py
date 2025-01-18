@@ -137,30 +137,39 @@ def authentication(client_socket):
       return False
 
 def options(client_socket):
-  while True:
+  
     try:
       client_socket.send(b"Options: \n1. List the active users\n2. Send a message to a user\n3. Send a message to all users\n4. Sign out\nEnter your choice: ")
       choice = client_socket.recv(1024).decode()
 
       if choice == "1":
-        client_socket.send(str(connected_clients).encode())
+        client_socket.send(f"Active users: {connected_clients}\n".encode())
+        return True
+       
       elif choice == "2":
         client_socket.send(b"Enter the username of the user you want to send a message to: ")
         recipient = client_socket.recv(1024).decode()
+        return True
+        
       elif choice == "3":
-        broadcast_message = True
+        client_socket.send(b"Enter your message to broadcast: ")
+        message = client_socket.recv(1024).decode()
+        #broadcast_message(client_socket, message)
+        return True
+        
       elif choice == "4":
         print("Signing out")
         client_socket.send(b"Disconnecting...")
         close_socket(client_socket)
-        break
+      
+      
       else:
         client_socket.send(b"Invalid input. Disconnecting...")
         close_socket(client_socket)
-        break
+       
     except Exception as e:
       print(f"Error in options: {e}")
-      break
+    
 
 def relay_message(client_socket, recipient, message):
   for username, ip in list(connected_clients.items()):
