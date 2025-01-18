@@ -51,7 +51,7 @@ def main():
   server_ip = '192.168.1.68' # Change this to the IP address of the server
   server_port = 53147 # Change this to the port number of the server
 
-  client_socket.settimeout(10)
+  client_socket.settimeout(300)
   # Set timeout for the connection
   client_socket.connect((server_ip, server_port)) # Connect to the server
   print("Connected to server at: ", server_ip, server_port)

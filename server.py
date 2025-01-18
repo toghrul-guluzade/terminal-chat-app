@@ -5,6 +5,8 @@ import authentication as auth
 import socket
 import threading
 import time
+from colorama import Fore, Style
+
 
 connected_clients = {} # Dictionary to store connected clients and lively updates
 
@@ -33,17 +35,20 @@ def close_socket(sock):
 #Function to handle each client
 def handle_client(client_socket, client_address):
   print("Connection from: ", client_address)
-  client_socket.send(b"Welcome to the server") # Send welcome message to client
-  client_socket.settimeout(10) # Set timeout for the connection
+  client_socket.send(Fore.GREEN.encode() + b"Welcome to the server" + Style.RESET_ALL.encode()) # Send welcome message to client
+  client_socket.settimeout(300) # Set timeout for the connection
     
   time.sleep(.5)
   try:
     auth_check = authentication(client_socket)
-    if auth_check == False:
+    if auth_check == True:
+      time.sleep(.5)
+      options(client_socket)
+
+    else:
+      print("Authentication failed. Disconnecting...")
+      client_socket.send(b"Authentication failed. Disconnecting...")
       close_socket(client_socket)
-      return
-    time.sleep(.5)
-    options(client_socket)
 
   except Exception as e:
     client_socket.send(b"You don't input for a long time. Disconnecting...")
@@ -101,18 +106,25 @@ def authentication(client_socket):
     auth.userSignUp(username, password)
     client_socket.send(b"User signed up successfully")
   elif condition == "1":
-    client_socket.send(b"Enter username for sign in: ",)
+    client_socket.send(b"Enter username for sign in: ")
     username = client_socket.recv(1024).decode()
     client_socket.send(b"Enter password: ")
     password = client_socket.recv(1024).decode()
-    if auth.userSignIn(username, password):
+    
+    is_user_found, is_password_match = auth.userSignIn(username, password)
+    
+    if is_user_found and is_password_match:
       client_socket.send(b"User signed in")
       client_ip = client_socket.getpeername()[0]
       connected_clients.update({username: client_ip})
       print(connected_clients)
       return True
-    else: 
-      client_socket.send(b"Invalid credentials")
+    elif not is_user_found: 
+      client_socket.send(b"User not found\n")
+      return False
+    elif not is_password_match:
+      client_socket.send(b"Wrong Password\n")
+      return False
   else:
     try:
       client_socket.send(b"Invalid input. Disconnecting...")
@@ -148,6 +160,27 @@ def options(client_socket):
         break
     except Exception as e:
       print(f"Error in options: {e}")
+      break
+
+def relay_message(client_socket, recipient, message):
+  for username, ip in list(connected_clients.items()):
+    if username == recipient:
+      recipient_socket = socket.socket()
+      recipient_socket.connect((ip, 53147))
+
+      while True:
+        try: 
+          client_socket.send(b"Enter the message: ")
+          message = client_socket.recv(1024).decode()
+          recipient_socket.send(client_socket.getpeername()[0].encode() + b": " + message.encode())
+          client_socket.send(b"Message sent")
+          break
+        
+        except Exception as e:
+          print(f"Error in relay_message: {e}")
+          break
+    else:
+      client_socket.send(b"User not found")
       break
 
 def start_server():
